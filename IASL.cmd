@@ -1,20 +1,15 @@
-@set iasver=2.0
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
+set iasver=2.0
 
 ::============================================================================
-:: IDM Activation Script (IAS)
-::============================================================================
-:: Homepages: https://github.com/Coporton/IDM-Activation-Script
-::            https://coporton.com/idm-activation-script
-:: Email: coporton@protonmail.com
+:: Coporton IDM Activation Toolkit (Activator + Registry Cleaner)
 ::============================================================================
 
-:: Set console window size
-mode con: cols=125 lines=40
-title IDM Activation Script (IAS) %iasver%
+mode con: cols=135 lines=40
+title IDM Toolkit v%iasver%
 
-:: Self-elevation
+:: Ensure Admin Privileges
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' NEQ '0' (
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
@@ -24,39 +19,22 @@ if '%errorlevel%' NEQ '0' (
     exit /B
 )
 
-:: Set script directories
+:: Set paths
 set "SCRIPT_DIR=%~dp0"
 set "SRC_DIR=%SCRIPT_DIR%src\"
-
-:: Set the paths for the .bin files
 set "DATA_FILE=%SRC_DIR%data.bin"
 set "DATAHLP_FILE=%SRC_DIR%dataHlp.bin"
-set "REGISTRY_FILE=%SRC_DIR%Registry.bin"
+set "REGISTRY_FILE=%SRC_DIR%registry.bin"
 set "EXTENSIONS_FILE=%SRC_DIR%extensions.bin"
+set "ascii_file=%SRC_DIR%banner_art.txt"
 
-:: Define color codes for output
+:: Output colors
 set "RESET=[0m"
 set "GREEN=[32m"
 set "RED=[31m"
 set "YELLOW=[33m"
 
-:: Check for administrator rights
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo %RED% You need to run this script as Administrator. Please right-click the script and choose "Run as Administrator".%RESET%
-    pause
-    exit /b
-)
-
-:: Now running with admin privileges
-echo %GREEN% Running with administrative privileges...%RESET%
-echo.
-
-:: Display ASCII art
 chcp 65001 >nul
-
-:: Define the path to your ASCII art file
-set "ascii_file=%SRC_DIR%banner_art.txt"
 
 :: Define the number of spaces for padding
 set "padding=   "
@@ -116,103 +94,151 @@ timeout /t 1 >nul
 echo %YELLOW% Installed Internet Download Manager Version: %IDM_VERSION%%RESET%
 timeout /t 1 >nul
 
-:: Prompt for user input
+:: MENU
 :menu
+::cls
 echo.
-echo %GREEN%  =============================================
-echo %GREEN%  :                                           :
-echo %GREEN%  :  [1] Activate Internet Download Manager   :
-echo %GREEN%  :  [2] Extra FileTypes Extensions           :
-echo %GREEN%  :  [3] Exit                                 :
-echo %GREEN%  :                                           :
-echo %GREEN%  =============================================%RESET%
+echo %GREEN%  ====================================================
+echo %GREEN%  :                                                :
+echo %GREEN%  :  [1] Clean Previous IDM Registry Entries       :
+echo %GREEN%  :  [2] Activate Internet Download Manager        :
+echo %GREEN%  :  [3] Extra FileTypes Extensions                :
+echo %GREEN%  :  [4] Exit                                      :
+echo %GREEN%  :                                                :
+echo %GREEN%  ====================================================%RESET%
 echo.
-timeout /t 1 >nul
+set "choice="
+set /p choice=" Choose an option (1-4): "
 
-set /p choice= " Choose an option (1, 2, or 3): "
+if "%choice%"=="1" call :CleanRegistry & call :askReturn
+if "%choice%"=="2" call :ActivateIDM & call :askReturn
+if "%choice%"=="3" call :AddExtentions & call :askReturn
+if "%choice%"=="4" call :quit
 
-:: Handle user choice
-if "%choice%"=="1" (
-    call :verifyFile "%DATA_FILE%" "data.bin"
-    call :verifyFile "%DATAHLP_FILE%" "dataHlp.bin"
-    call :verifyFile "%REGISTRY_FILE%" "Registry.bin"
-    call :verifyDestinationDirectory
 
-    :: Terminate IDMan.exe process if running
-    call :terminateProcess "IDMan.exe"
+echo %RED% Invalid option. Try again.%RESET%
+goto :menu
 
-    echo %GREEN% Internet Download Manager activated successfully!%RESET%
-    regedit /s "%REGISTRY_FILE%"
-    copy "%DATA_FILE%" "%DEFAULT_DEST_DIR%\IDMan.exe" >nul
-    copy "%DATAHLP_FILE%" "%DEFAULT_DEST_DIR%\IDMGrHlp.exe" >nul
-    if %errorlevel% neq 0 (
-        echo %RED% Error: Failed to copy files to destination directory.%RESET%
-    )
-    echo.
-    pause
-    call :askReturn
-) else if "%choice%"=="2" (
-    call :verifyFile "%EXTENSIONS_FILE%" "extensions.bin"
-    echo %GREEN% Extra FileTypes Extensions updated successfully!%RESET%
-    regedit /s "%EXTENSIONS_FILE%"
-    echo.
-    pause
-    call :askReturn
-) else if "%choice%"=="3" (
-    setlocal disabledelayedexpansion
-    echo %GREEN% Exiting the script. Thank you!!!%RESET%
-    timeout /t 2 >nul
-    exit
-) else (
-    echo %RED% Invalid choice. Please select 1, 2, or 3.%RESET%
-    goto :menu
+::----------------------
+:CleanRegistry
+:: Full registry cleaning logic
+call :terminateProcess "IDMan.exe"
+echo %YELLOW% Cleaning IDM-related Registry Entries...%RESET%
+
+for %%k in (
+    "HKLM\Software\Classes\CLSID\{7B8E9164-324D-4A2E-A46D-0165FB2000EC}"
+    "HKLM\Software\Classes\CLSID\{6DDF00DB-1234-46EC-8356-27E7B2051192}"
+    "HKLM\Software\Classes\CLSID\{D5B91409-A8CA-4973-9A0B-59F713D25671}"
+    "HKLM\Software\Classes\CLSID\{5ED60779-4DE2-4E07-B862-974CA4FF2E9C}"
+    "HKLM\Software\Classes\CLSID\{07999AC3-058B-40BF-984F-69EB1E554CA7}"
+    "HKLM\Software\Classes\CLSID\{E8CF4E59-B7A3-41F2-86C7-82B03334F22A}"
+    "HKLM\Software\Classes\CLSID\{9C9D53D4-A978-43FC-93E2-1C21B529E6D7}"
+    "HKLM\Software\Classes\CLSID\{79873CC5-3951-43ED-BDF9-D8759474B6FD}"
+    "HKLM\Software\Classes\CLSID\{E6871B76-C3C8-44DD-B947-ABFFE144860D}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{7B8E9164-324D-4A2E-A46D-0165FB2000EC}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{6DDF00DB-1234-46EC-8356-27E7B2051192}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{D5B91409-A8CA-4973-9A0B-59F713D25671}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{5ED60779-4DE2-4E07-B862-974CA4FF2E9C}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{07999AC3-058B-40BF-984F-69EB1E554CA7}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{E8CF4E59-B7A3-41F2-86C7-82B03334F22A}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{9C9D53D4-A978-43FC-93E2-1C21B529E6D7}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{79873CC5-3951-43ED-BDF9-D8759474B6FD}"
+    "HKLM\Software\Classes\Wow6432Node\CLSID\{E6871B76-C3C8-44DD-B947-ABFFE144860D}"
+    "HKCU\Software\Classes\CLSID\{7B8E9164-324D-4A2E-A46D-0165FB2000EC}"
+    "HKCU\Software\Classes\CLSID\{6DDF00DB-1234-46EC-8356-27E7B2051192}"
+    "HKCU\Software\Classes\CLSID\{D5B91409-A8CA-4973-9A0B-59F713D25671}"
+    "HKCU\Software\Classes\CLSID\{5ED60779-4DE2-4E07-B862-974CA4FF2E9C}"
+    "HKCU\Software\Classes\CLSID\{07999AC3-058B-40BF-984F-69EB1E554CA7}"
+    "HKCU\Software\Classes\CLSID\{E8CF4E59-B7A3-41F2-86C7-82B03334F22A}"
+    "HKCU\Software\Classes\CLSID\{9C9D53D4-A978-43FC-93E2-1C21B529E6D7}"
+    "HKCU\Software\Classes\CLSID\{79873CC5-3951-43ED-BDF9-D8759474B6FD}"
+    "HKCU\Software\Classes\CLSID\{E6871B76-C3C8-44DD-B947-ABFFE144860D}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{7B8E9164-324D-4A2E-A46D-0165FB2000EC}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{6DDF00DB-1234-46EC-8356-27E7B2051192}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{D5B91409-A8CA-4973-9A0B-59F713D25671}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{5ED60779-4DE2-4E07-B862-974CA4FF2E9C}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{07999AC3-058B-40BF-984F-69EB1E554CA7}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{E8CF4E59-B7A3-41F2-86C7-82B03334F22A}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{9C9D53D4-A978-43FC-93E2-1C21B529E6D7}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{79873CC5-3951-43ED-BDF9-D8759474B6FD}"
+    "HKCU\Software\Classes\Wow6432Node\CLSID\{E6871B76-C3C8-44DD-B947-ABFFE144860D}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{7B8E9164-324D-4A2E-A46D-0165FB2000EC}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{6DDF00DB-1234-46EC-8356-27E7B2051192}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{D5B91409-A8CA-4973-9A0B-59F713D25671}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{5ED60779-4DE2-4E07-B862-974CA4FF2E9C}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{07999AC3-058B-40BF-984F-69EB1E554CA7}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{E8CF4E59-B7A3-41F2-86C7-82B03334F22A}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{9C9D53D4-A978-43FC-93E2-1C21B529E6D7}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{79873CC5-3951-43ED-BDF9-D8759474B6FD}"
+    "HKU\.DEFAULT\Software\Classes\CLSID\{E6871B76-C3C8-44DD-B947-ABFFE144860D}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{7B8E9164-324D-4A2E-A46D-0165FB2000EC}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{6DDF00DB-1234-46EC-8356-27E7B2051192}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{D5B91409-A8CA-4973-9A0B-59F713D25671}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{5ED60779-4DE2-4E07-B862-974CA4FF2E9C}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{07999AC3-058B-40BF-984F-69EB1E554CA7}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{E8CF4E59-B7A3-41F2-86C7-82B03334F22A}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{9C9D53D4-A978-43FC-93E2-1C21B529E6D7}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{79873CC5-3951-43ED-BDF9-D8759474B6FD}"
+    "HKU\.DEFAULT\Software\Classes\Wow6432Node\CLSID\{E6871B76-C3C8-44DD-B947-ABFFE144860D}"
+    "HKLM\Software\Internet Download Manager"
+    "HKLM\Software\Wow6432Node\Internet Download Manager"
+    "HKCU\Software\Download Manager"
+    "HKCU\Software\Wow6432Node\Download Manager"
+) do reg delete %%k /f >nul 2>&1
+
+:: Clean license values (if present)
+for %%v in ("FName" "LName" "Email" "Serial" "CheckUpdtVM" "tvfrdt" "LstCheck" "scansk") do (
+    reg delete "HKCU\Software\DownloadManager" /v %%v /f >nul 2>&1
 )
 
-:end
-endlocal
+:: Re-register user info
+reg add "HKCU\SOFTWARE\DownloadManager" /v FName /t REG_SZ /d Coporton /f >nul
+reg add "HKCU\SOFTWARE\DownloadManager" /v LName /t REG_SZ /d WorkStation /f >nul
+
+echo %GREEN% Registry cleanup completed.%RESET%
 exit /b
 
-:: Subroutine to verify file existence
+::----------------------
+:ActivateIDM
+call :verifyFile "%DATA_FILE%" "data.bin"
+call :verifyFile "%DATAHLP_FILE%" "dataHlp.bin"
+call :verifyFile "%REGISTRY_FILE%" "registry.bin"
+call :verifyDestinationDirectory
+call :terminateProcess "IDMan.exe"
+regedit /s "%REGISTRY_FILE%"
+copy "%DATA_FILE%" "%DEFAULT_DEST_DIR%IDMan.exe" >nul
+copy "%DATAHLP_FILE%" "%DEFAULT_DEST_DIR%IDMGrHlp.exe" >nul
+echo %GREEN% Congratulations. Internet Download Manager Activated Successfully.%RESET%
+exit /b
+
 :verifyFile
-echo  Verifying source file "%~2"...
-if not exist "%~1" (
-    echo %RED% Source file "%~2" not found. Please verify.%RESET%
-    pause
-    exit /b
-)
-echo  Source file "%~2" exists.
+if not exist "%~1" echo %RED% Missing: %~2%RESET% & pause & exit /b
 exit /b
 
-:: Subroutine to verify destination directory
 :verifyDestinationDirectory
-echo  Verifying destination directory...
-if not exist "%DEFAULT_DEST_DIR%" (
-    echo %RED% Destination directory not found. Please verify the path.%RESET%
-    pause
-    exit /b
-)
-echo  Destination directory exists.
+if not exist "%DEFAULT_DEST_DIR%" echo %RED% Destination not found.%RESET% & pause & exit /b
 exit /b
 
-:: Subroutine to terminate a process
 :terminateProcess
-echo  Terminating %~1 if running...
-@taskkill /F /IM %~1 >nul 2>&1
-if %errorlevel% neq 0 (
-    echo %RED% Failed to terminate %~1 or process not found.%RESET%
-) else (
-    echo  %GREEN%%~1 process terminated.%RESET%
-)
+taskkill /F /IM %~1 >nul 2>&1
 exit /b
 
+:AddExtentions
+regedit /s "%EXTENSIONS_FILE%"
+echo %GREEN% Extra FileTypes Extensions updated successfully.%RESET%
+exit /b
+
+::----------------------
 :askReturn
-echo.
-set /p returnChoice=" Do you want to return to the main menu? (Y/N): "
-if /i "%returnChoice%"=="Y" goto :menu
-if /i "%returnChoice%"=="N" (
-    echo %GREEN% Exiting the script. Thank you!!!%RESET%
+set /p back=" Return to main menu? (Y/N): "
+if /i "%back%"=="Y" goto :menu
+if /i "%back%"=="N" call :quit
+goto :askReturn
+
+::----------------------
+:quit
+    echo.
+    echo %GREEN% Thank you for using Coporton IDM Activation Toolkit. Exiting...%RESET%
     timeout /t 2 >nul
     exit
-)
-echo %YELLOW% Invalid input. Please enter Y or N.%RESET%
-goto askReturn
+    
