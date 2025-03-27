@@ -103,7 +103,8 @@ echo %GREEN%  :                                                :
 echo %GREEN%  :  [1] Clean Previous IDM Registry Entries       :
 echo %GREEN%  :  [2] Activate Internet Download Manager        :
 echo %GREEN%  :  [3] Extra FileTypes Extensions                :
-echo %GREEN%  :  [4] Exit                                      :
+echo %GREEN%  :  [4] Do Everything (1 + 2 + 3)                 :
+echo %GREEN%  :  [5] Exit                                      :
 echo %GREEN%  :                                                :
 echo %GREEN%  ====================================================%RESET%
 echo.
@@ -113,7 +114,8 @@ set /p choice=" Choose an option (1-4): "
 if "%choice%"=="1" call :CleanRegistry & call :askReturn
 if "%choice%"=="2" call :ActivateIDM & call :askReturn
 if "%choice%"=="3" call :AddExtentions & call :askReturn
-if "%choice%"=="4" call :quit
+if "%choice%"=="4" call :DoEverything & call :askReturn
+if "%choice%"=="5" call :quit
 
 
 echo %RED% Invalid option. Try again.%RESET%
@@ -226,6 +228,16 @@ exit /b
 :AddExtentions
 regedit /s "%EXTENSIONS_FILE%"
 echo %GREEN% Extra FileTypes Extensions updated successfully.%RESET%
+exit /b
+
+::----------------------
+:DoEverything
+call :CleanRegistry
+call :ActivateIDM
+call :AddExtentions
+echo.
+echo %GREEN% All tasks completed successfully!%RESET%
+echo.
 exit /b
 
 ::----------------------
